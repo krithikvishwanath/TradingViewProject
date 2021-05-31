@@ -1,0 +1,46 @@
+//@version=4
+strategy(shorttitle="BB + RSI", title="Bollinger Bands + RSI", overlay=true)
+
+//TIMEFRAME
+startDate = input(title="Start Date", type=input.integer,
+     defval=1, minval=1, maxval=31)
+startMonth = input(title="Start Month", type=input.integer,
+     defval=1, minval=1, maxval=12)
+startYear = input(title="Start Year", type=input.integer,
+     defval=2000, minval=1800, maxval=2100)
+
+endDate = input(title="End Date", type=input.integer,
+     defval=31, minval=1, maxval=31)
+endMonth = input(title="End Month", type=input.integer,
+     defval=12, minval=1, maxval=12)
+endYear = input(title="End Year", type=input.integer,
+     defval=2020, minval=1800, maxval=2100)
+inDateRange = (time >= timestamp(syminfo.timezone, startYear,
+         startMonth, startDate, 0, 0)) and
+     (time < timestamp(syminfo.timezone, endYear, endMonth, endDate, 0, 0))
+//CONSTS
+
+length = input(20, minval=1)
+src = input(close, title="Source")
+mult = input(2.0, minval=0.001, maxval=50, title="StdDev")
+basis = sma(src, length)
+dev = mult * stdev(src, length)
+upper = basis + dev
+lower = basis - dev
+offset = input(0, "Offset", type = input.integer, minval = -500, maxval = 500)
+plot(basis, "Basis", color=#872323, offset = offset)
+p1 = plot(upper, "Upper", color=color.teal, offset = offset)
+p2 = plot(lower, "Lower", color=color.teal, offset = offset)
+fill(p1, p2, title = "Background", color=#198787, transp=95)
+
+//RSI
+up = rma(max(change(src), 0), length)
+down = rma(-min(change(src), 0), length)
+rsi = down == 0 ? 100 : up == 0 ? 0 : 100 - (100 / (1 + up / down))
+
+if (crossover(src, lower) and rsi>30 and inDateRange)
+	strategy.entry("BB-Long", strategy.long)
+if (crossunder(src, upper) and rsi<70 and inDateRange)
+	strategy.entry("BB-Short", strategy.short)
+strategy.close("BB-Long", when=cross(close, basis))
+strategy.close("BB-Short", when=cross(close, basis))
